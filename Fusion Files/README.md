@@ -1,1 +1,1 @@
-THis folder contains all the 3D model files
+This folder contains all the 3D model files
