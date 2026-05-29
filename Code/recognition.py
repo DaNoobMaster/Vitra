@@ -14,7 +14,7 @@ import os
 online=True
 multiple=True
 responses = []
-model_path = "C:\\Users\\mihir\\source\\repos\\Image Recognition\\mobileclip2_s0.pt"
+model_path = "" #your local model download path
 
 #add your api keys here
 google_api_key = " "
@@ -51,7 +51,6 @@ prompt = """
 
 #loading the local model, you can change the model name and path as per your requirements, for example you can use "MobileCLIP2-S3" or "MobileCLIP2-S4" or any of the L-14 models, if using those models make sure to remove the model_kwargs as they are not needed for those models
 model_name = "MobileCLIP2-S0" #name of your mobileclip model
-model_path = "C:\\Users\\mihir\\source\\repos\\Image Recognition\\mobileclip2_s0.pt" # path location of your mobileclip model
 model_kwargs = {}
 if not (model_name == "MobileCLIP2-S3" or model_name == "MobileCLIP2-S4" or model_name.endswith("L-14")):
     model_kwargs = {"image_mean": (0, 0, 0), "image_std": (1, 1, 1)}
