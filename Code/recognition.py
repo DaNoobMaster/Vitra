@@ -17,9 +17,9 @@ responses = []
 model_path = "C:\\Users\\mihir\\source\\repos\\Image Recognition\\mobileclip2_s0.pt"
 
 #add your api keys here
-google_api_key = "AIzaSyAVvc7DJkK3gk40yQ6EPnUDb-jEoY4WhNU"
-grok_api_key = "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"
-router_api_key = "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"
+google_api_key = " "
+grok_api_key = " "
+router_api_key = " "
 
 #model names for online mode
 #multiple models are used in order to create a layer on top of all of them and combine their results, if preferred, set multiple=False to use only one for quicker run time  
