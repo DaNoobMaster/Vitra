@@ -1,4 +1,6 @@
 import base64
+import json
+import re
 import torch
 import open_clip
 from PIL import Image
@@ -7,19 +9,20 @@ import google.genai as genai
 from openai import OpenAI
 from groq import Groq
 from openrouter import OpenRouter
-import json
 import threading
 import os
 
 online=True
 multiple=True
 responses = []
-model_path = "" #your local model download path
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+IMAGE_PATH = os.path.join(BASE_DIR, "trash.jpg")
+IMAGE_MIME_TYPE = "image/jpeg"
 
 #add your api keys here
-google_api_key = " "
-grok_api_key = " "
-router_api_key = " "
+google_api_key = ""
+grok_api_key = ""
+router_api_key = ""
 
 #model names for online mode
 #multiple models are used in order to create a layer on top of all of them and combine their results, if preferred, set multiple=False to use only one for quicker run time  
@@ -51,6 +54,7 @@ prompt = """
 
 #loading the local model, you can change the model name and path as per your requirements, for example you can use "MobileCLIP2-S3" or "MobileCLIP2-S4" or any of the L-14 models, if using those models make sure to remove the model_kwargs as they are not needed for those models
 model_name = "MobileCLIP2-S0" #name of your mobileclip model
+model_path = "C:\\Users\\mihir\\source\\repos\\Image Recognition\\mobileclip2_s0.pt" # path location of your mobileclip model
 model_kwargs = {}
 if not (model_name == "MobileCLIP2-S3" or model_name == "MobileCLIP2-S4" or model_name.endswith("L-14")):
     model_kwargs = {"image_mean": (0, 0, 0), "image_std": (1, 1, 1)}
@@ -63,7 +67,7 @@ model = reparameterize_model(model)
 
 def local():
     values=[] #wet,plastic,metal
-    image = preprocess(Image.open("C:\\Users\\mihir\\source\\repos\\Image Recognition\\trash.png").convert("RGB")).unsqueeze(0)
+    image = preprocess(Image.open(IMAGE_PATH).convert("RGB")).unsqueeze(0)
     text = tokenizer([
         "food waste like banana peels leftovers and organic scraps",
         "plastic bottles containers wrappers and packaging trash",
@@ -83,18 +87,43 @@ def local():
 def google(prompt,key,Model):
     try:
         client = genai.Client(api_key=key)
-        image = Image.open("trash.png")
+        image = Image.open(IMAGE_PATH)
         google_response = client.models.generate_content(model=Model,contents=[prompt,image])
         responses.append(json.loads(google_response.text[8:-3]))
         print("google confirmed")
-    except:
+    except Exception as e:
+        print("ERROR (google):", e)
         return
+
+def extract_json_from_text(text):
+    if isinstance(text, str):
+        text = text.strip()
+    else:
+        raise ValueError("Expected text to extract JSON from")
+
+    if not text:
+        raise ValueError("Text is empty")
+
+    try:
+        return json.loads(text)
+    except json.JSONDecodeError:
+        pass
+
+    for match in re.finditer(r"\{", text):
+        try:
+            obj, _ = json.JSONDecoder().raw_decode(text[match.start():])
+            return obj
+        except json.JSONDecodeError:
+            continue
+
+    raise ValueError("No valid JSON object found in text")
+
 
 def openai(prompt,key,Model):
     try:
         client = OpenAI(api_key=key)
-        image = Image.open("trash.png")
-        with open("trash.png", "rb") as f:
+        image = Image.open(IMAGE_PATH)
+        with open(IMAGE_PATH, "rb") as f:
             image_base64 = base64.b64encode(f.read()).decode("utf-8")
         openai_response = client.responses.create(
             model=Model,
@@ -105,7 +134,7 @@ def openai(prompt,key,Model):
                         { "type": "input_text", "text":prompt},
                         {
                             "type": "input_image",
-                            "image_url": f"data:image/png;base64,{image_base64}",
+                            "image_url": f"data:{IMAGE_MIME_TYPE};base64,{image_base64}",
                         },
                     ],
                 }
@@ -113,13 +142,14 @@ def openai(prompt,key,Model):
         )
         responses.append(json.loads(openai_response[8:-3]))
         print("openai confirmed")
-    except:
+    except Exception as e:
+        print("ERROR: ", e)
         return
 
 def grok(prompt, key, Model):
     try:
         client = Groq(api_key=key)
-        with open("trash.png", "rb") as image_file:
+        with open(IMAGE_PATH, "rb") as image_file:
             base64_image = base64.b64encode(image_file.read()).decode("utf-8")
         chat_completion = client.chat.completions.create(
             model=Model,
@@ -134,7 +164,7 @@ def grok(prompt, key, Model):
                         {
                             "type": "image_url",
                             "image_url": {
-                                "url": f"data:image/png;base64,{base64_image}"
+                                "url": f"data:{IMAGE_MIME_TYPE};base64,{base64_image}"
                             },
                         },
                     ],
@@ -142,15 +172,29 @@ def grok(prompt, key, Model):
             ],
         )
 
+        raw_content = chat_completion.choices[0].message.content
+        if raw_content is None:
+            raise ValueError("Groq returned no message content")
+
+        parsed = extract_json_from_text(raw_content)
+        responses.append(parsed)
         print("grok confirmed")
-        responses.append(json.loads(chat_completion.choices[0].message.content[4:-4]))
-    except:
+    except ValueError as e:
+        print("ERROR: could not extract JSON from Groq output:", e)
+        print("grok raw content:", repr(raw_content))
+        return
+    except json.JSONDecodeError as e:
+        print("ERROR: could not parse Groq JSON output:", e)
+        print("grok raw content:", repr(raw_content))
+        return
+    except Exception as e:
+        print("ERROR: ", e)
         return
 
 def router(prompt, key, Model):
     try:
         client = OpenRouter(api_key=key)
-        with open("trash.png", "rb") as image_file:
+        with open(IMAGE_PATH, "rb") as image_file:
             base64_image = base64.b64encode(image_file.read()).decode("utf-8")
         response = client.chat.send(
             model=Model,
@@ -166,7 +210,7 @@ def router(prompt, key, Model):
                         {
                             "type": "image_url",
                             "image_url": {
-                                "url": f"data:image/png;base64,{base64_image}"
+                                "url": f"data:{IMAGE_MIME_TYPE};base64,{base64_image}"
                             }
                         }
                     ]
@@ -175,7 +219,8 @@ def router(prompt, key, Model):
         )
         print("router confirmed")
         responses.append(json.loads(response.choices[0].message.content[8:-3]))
-    except:
+    except Exception as e:
+        print("ERROR: ", e)
         return
 
 if online ==False:
