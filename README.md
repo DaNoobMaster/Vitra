@@ -1,5 +1,12 @@
-# Vitra
+# Vitra – AI Waste Classification System
+
 Computer vision based trash can sorting system that runs on a raspberry-pi with a custom 3d printed model. Involves both a local model and 3 cloud based AI models for judgement. This creates a layer on top of all of the cloud models to merge results and increase accuracy. This project is intended to promote proper waste segregation and improve recycling opportunities. Using this in households can be a step in the right direction towards sustainability, a growing problem in our current society.
+
+Waste is classified into 3 categories : 
+- **Wet:** Food waste, banana peels, leftovers, and organic scraps.
+- **Plastic:** Plastic bottles, containers, wrappers, and packaging.
+- **Metal:** Metal cans, aluminium foil, and other metallic waste.
+
 
 <img width="831" height="506" alt="image" src="https://github.com/user-attachments/assets/cfb294c3-ad86-43fd-9030-6418e6a92ec0" />
 <img width="439" height="515" alt="image" src="https://github.com/user-attachments/assets/c2e9a2da-6ef9-415f-838f-c4a4157d09f8" />
@@ -21,3 +28,4 @@ BUILD INSTRUCTIONS-
 -the arm also contains dovetail joints to connect the camera holder to it while allowing it to print with ease.
 -The raspberry pi camera is to be slid into the camera slot of the arm
 -The arm is to be attached to a NEMA 17 coupler then attached to the nema 17
+
